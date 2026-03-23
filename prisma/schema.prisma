@@ -1,0 +1,424 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum AddressType {
+  SHIPPING
+  BILLING
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum StockPolicy {
+  DENY
+  ALLOW_BACKORDER
+}
+
+enum CartType {
+  ONE_TIME
+  SUBSCRIPTION
+}
+
+enum OrderType {
+  ONE_TIME
+  SUBSCRIPTION_INITIAL
+  SUBSCRIPTION_RENEWAL
+}
+
+enum OrderStatus {
+  PENDING
+  AWAITING_PAYMENT
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentType {
+  ONE_TIME
+  SUBSCRIPTION
+}
+
+enum PaymentStatus {
+  PENDING
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  CANCELED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELED
+  INCOMPLETE
+  PAST_DUE
+}
+
+enum ShipmentStatus {
+  PENDING
+  PREPARING
+  SHIPPED
+  DELIVERED
+  FAILED
+  CANCELED
+}
+
+enum NoteScope {
+  CUSTOMER
+  ORDER
+}
+
+model User {
+  id               String           @id @default(cuid())
+  email            String?          @unique
+  passwordHash     String?
+  role             Role             @default(CUSTOMER)
+  status           UserStatus       @default(ACTIVE)
+  firstName        String?
+  lastName         String?
+  phone            String?
+  stripeCustomerId String?          @unique
+  emailVerifiedAt  DateTime?
+  customerProfile  CustomerProfile?
+  addresses        Address[]
+  carts            Cart[]
+  orders           Order[]
+  subscriptions    Subscription[]
+  notesAuthored    CustomerNote[]   @relation("CustomerNoteAuthor")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model CustomerProfile {
+  id               String           @id @default(cuid())
+  userId           String?          @unique
+  user             User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestEmail       String?
+  firstName        String?
+  lastName         String?
+  phone            String?
+  emergencyContact String?
+  billingName      String?
+  taxId            String?
+  notes            String?
+  addresses        Address[]
+  orders           Order[]
+  subscriptions    Subscription[]
+  customerNotes    CustomerNote[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([guestEmail])
+}
+
+model Address {
+  id                String          @id @default(cuid())
+  userId            String?
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerProfileId String?
+  customerProfile   CustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
+  type              AddressType
+  label             String?
+  recipientName     String
+  line1             String
+  line2             String?
+  city              String
+  state             String?
+  postalCode        String?
+  country           String
+  phone             String?
+  isDefaultShipping Boolean         @default(false)
+  isDefaultBilling  Boolean         @default(false)
+  ordersShipping    Order[]         @relation("ShippingAddress")
+  ordersBilling     Order[]         @relation("BillingAddress")
+  subscriptions     Subscription[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id                    String             @id @default(cuid())
+  name                  String
+  slug                  String             @unique
+  sku                   String             @unique
+  description           String?
+  shortDescription      String?
+  status                ProductStatus      @default(ACTIVE)
+  categoryId            String
+  category              Category           @relation(fields: [categoryId], references: [id])
+  price                 Decimal            @db.Decimal(10, 2)
+  compareAtPrice        Decimal?           @db.Decimal(10, 2)
+  subscriptionPrice     Decimal?           @db.Decimal(10, 2)
+  currency              String             @default("USD")
+  allowsSubscription    Boolean            @default(true)
+  stockPolicy           StockPolicy        @default(DENY)
+  isFeatured            Boolean            @default(false)
+  images                ProductImage[]
+  inventoryItem         InventoryItem?
+  bundleItems           BundleItem[]
+  cartItems             CartItem[]
+  orderItems            OrderItem[]
+  subscriptionItems     SubscriptionItem[]
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model InventoryItem {
+  id                String   @id @default(cuid())
+  productId         String   @unique
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  availableQuantity Int      @default(0)
+  reservedQuantity  Int      @default(0)
+  minimumQuantity   Int      @default(0)
+  trackStock        Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Bundle {
+  id                 String             @id @default(cuid())
+  name               String
+  slug               String             @unique
+  description        String?
+  status             ProductStatus      @default(ACTIVE)
+  price              Decimal            @db.Decimal(10, 2)
+  subscriptionPrice  Decimal?           @db.Decimal(10, 2)
+  currency           String             @default("USD")
+  allowsSubscription Boolean            @default(true)
+  items              BundleItem[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  subscriptionItems  SubscriptionItem[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model BundleItem {
+  id        String   @id @default(cuid())
+  bundleId  String
+  bundle    Bundle   @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  createdAt DateTime @default(now())
+
+  @@unique([bundleId, productId])
+}
+
+model Cart {
+  id           String    @id @default(cuid())
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionToken String?   @unique
+  type         CartType  @default(ONE_TIME)
+  currency     String    @default("USD")
+  items        CartItem[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  bundleId  String?
+  bundle    Bundle?  @relation(fields: [bundleId], references: [id])
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id                String           @id @default(cuid())
+  orderNumber       String           @unique
+  type              OrderType
+  status            OrderStatus      @default(PENDING)
+  userId            String?
+  user              User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerProfileId String?
+  customerProfile   CustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
+  email             String
+  shippingAddressId String?
+  shippingAddress   Address?         @relation("ShippingAddress", fields: [shippingAddressId], references: [id], onDelete: SetNull)
+  billingAddressId  String?
+  billingAddress    Address?         @relation("BillingAddress", fields: [billingAddressId], references: [id], onDelete: SetNull)
+  subscriptionId    String?
+  subscription      Subscription?    @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  currency          String           @default("USD")
+  subtotalAmount    Decimal          @db.Decimal(10, 2)
+  discountAmount    Decimal          @default(0) @db.Decimal(10, 2)
+  shippingAmount    Decimal          @default(0) @db.Decimal(10, 2)
+  taxAmount         Decimal          @default(0) @db.Decimal(10, 2)
+  totalAmount       Decimal          @db.Decimal(10, 2)
+  paidAt            DateTime?
+  fulfilledAt       DateTime?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  items             OrderItem[]
+  payments          Payment[]
+  shipments         Shipment[]
+  notes             CustomerNote[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([status])
+  @@index([subscriptionId])
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id])
+  bundleId     String?
+  bundle       Bundle?  @relation(fields: [bundleId], references: [id])
+  itemType     String
+  nameSnapshot String
+  skuSnapshot  String?
+  unitPrice    Decimal  @db.Decimal(10, 2)
+  quantity     Int
+  lineTotal    Decimal  @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+}
+
+model Payment {
+  id                      String           @id @default(cuid())
+  orderId                 String?
+  order                   Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  subscriptionId          String?
+  subscription            Subscription?    @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  type                    PaymentType
+  status                  PaymentStatus    @default(PENDING)
+  provider                String           @default("stripe")
+  providerPaymentIntentId String?          @unique
+  providerInvoiceId       String?          @unique
+  providerChargeId        String?          @unique
+  currency                String           @default("USD")
+  amount                  Decimal          @db.Decimal(10, 2)
+  paidAt                  DateTime?
+  failedAt                DateTime?
+  failureReason           String?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  @@index([status])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String?
+  user                 User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerProfileId    String?
+  customerProfile      CustomerProfile?   @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
+  shippingAddressId    String?
+  shippingAddress      Address?           @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+  status               SubscriptionStatus @default(INCOMPLETE)
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  currency             String             @default("USD")
+  interval             String             @default("month")
+  intervalCount        Int                @default(1)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  nextBillingDate      DateTime?
+  nextShipmentDate     DateTime?
+  canceledAt           DateTime?
+  pausedAt             DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  items                SubscriptionItem[]
+  orders               Order[]
+  payments             Payment[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([status])
+}
+
+model SubscriptionItem {
+  id             String        @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product?      @relation(fields: [productId], references: [id])
+  bundleId       String?
+  bundle         Bundle?       @relation(fields: [bundleId], references: [id])
+  quantity       Int
+  unitPrice      Decimal       @db.Decimal(10, 2)
+  createdAt      DateTime      @default(now())
+}
+
+model Shipment {
+  id             String         @id @default(cuid())
+  orderId        String
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status         ShipmentStatus @default(PENDING)
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  trackingNumber String?
+  carrier        String?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model CustomerNote {
+  id                String           @id @default(cuid())
+  scope             NoteScope
+  customerProfileId String?
+  customerProfile   CustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
+  orderId           String?
+  order             Order?           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  authorUserId      String?
+  authorUser        User?            @relation("CustomerNoteAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  content           String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([scope])
+}

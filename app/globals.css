@@ -1,0 +1,123 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+@layer base {
+  :root {
+    --background: #faf8f5;
+    --foreground: #1a1a1a;
+    --card: #ffffff;
+    --card-foreground: #1a1a1a;
+    --popover: #ffffff;
+    --popover-foreground: #1a1a1a;
+    --primary: #1b4d5a;
+    --primary-foreground: #faf8f5;
+    --secondary: #f0ece7;
+    --secondary-foreground: #3d3d3d;
+    --muted: #e8e4de;
+    --muted-foreground: #6b6560;
+    --accent: #e6dfd6;
+    --accent-foreground: #1a1a1a;
+    --destructive: #c4403a;
+    --border: #ddd8d0;
+    --input: #ddd8d0;
+    --ring: #1b4d5a;
+    --chart-1: #1b4d5a;
+    --chart-2: #3d8fa0;
+    --chart-3: #6b6560;
+    --chart-4: #c4403a;
+    --chart-5: #ddd8d0;
+    --radius: 0.75rem;
+    --sidebar: #faf8f5;
+    --sidebar-foreground: #1a1a1a;
+    --sidebar-primary: #1b4d5a;
+    --sidebar-primary-foreground: #faf8f5;
+    --sidebar-accent: #f0ece7;
+    --sidebar-accent-foreground: #1a1a1a;
+    --sidebar-border: #ddd8d0;
+    --sidebar-ring: #1b4d5a;
+  }
+
+  .dark {
+    --background: #111113;
+    --foreground: #e8e4de;
+    --card: #1a1a1d;
+    --card-foreground: #e8e4de;
+    --popover: #1a1a1d;
+    --popover-foreground: #e8e4de;
+    --primary: #3d8fa0;
+    --primary-foreground: #111113;
+    --secondary: #222226;
+    --secondary-foreground: #e8e4de;
+    --muted: #2a2a2e;
+    --muted-foreground: #8a8680;
+    --accent: #2e2e32;
+    --accent-foreground: #e8e4de;
+    --destructive: #d4534d;
+    --border: #2e2e32;
+    --input: #2e2e32;
+    --ring: #3d8fa0;
+    --sidebar: #1a1a1d;
+    --sidebar-foreground: #e8e4de;
+    --sidebar-primary: #3d8fa0;
+    --sidebar-primary-foreground: #111113;
+    --sidebar-accent: #222226;
+    --sidebar-accent-foreground: #e8e4de;
+    --sidebar-border: #2e2e32;
+    --sidebar-ring: #3d8fa0;
+  }
+
+  .theme {
+    --font-sans: var(--font-body);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    @apply font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  a,
+  button {
+    @apply transition-all duration-200;
+  }
+
+  ::selection {
+    background: rgba(27, 77, 90, 0.15);
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply mx-auto w-full max-w-7xl px-5 md:px-6;
+  }
+
+  .editorial-kicker {
+    @apply text-[0.68rem] font-medium uppercase tracking-[0.38em] text-muted-foreground;
+  }
+
+  .editorial-title {
+    @apply font-display text-4xl leading-[0.92] tracking-[-0.03em] text-foreground md:text-6xl;
+  }
+
+  .editorial-copy {
+    @apply text-sm leading-7 text-muted-foreground md:text-base;
+  }
+
+  .photo-frame {
+    @apply relative overflow-hidden rounded-lg bg-muted;
+  }
+}
